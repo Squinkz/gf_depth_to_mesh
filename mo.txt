@@ -1,0 +1,51 @@
+	setup	mo_winws
+	background	mo_1_winws.bm
+	zbuffer		mo_1_winws.zbm
+	position	1.471700	0.051800	0.481300
+	interest	0.715000	1.728400	0.221800
+	roll		0.000000
+	fov		75.178040
+	nclip		0.010000
+	fclip		3276.800049
+
+	setup	mo_ddtws
+	background	mo_0_ddtws.bm
+	zbuffer		mo_0_ddtws.zbm
+	position	0.571882	2.461178	0.362781
+	interest	1.089404	1.127796	0.217699
+	roll		0.000000
+	fov		75.178040
+	nclip		0.010000
+	fclip		3276.800049
+
+
+	setup	mo_comin
+	background	mo_2_comin.bm
+	zbuffer		mo_2_comin.zbm
+	position	0.480100	2.053000	0.821600
+	interest	0.210900	1.887600	0.306200
+	roll		0.000000
+	fov		72.652519
+	nclip		0.010000
+	fclip		3276.800049
+
+
+	setup	mo_cornr
+	background	mo_3_cornr.bm
+	zbuffer		mo_3_cornr.zbm
+	position	0.959500	1.116200	0.419200
+	interest	0.262800	0.715000	0.318400
+	roll		0.000000
+	fov		72.652519
+	nclip		0.010000
+	fclip		3276.800049
+
+	setup	mo_mcecu
+	background	mo_5_mcecu.bm
+	zbuffer		mo_5_mcecu.zbm
+	position	0.779100	2.172000	0.393800
+	interest	1.315700	1.235300	0.278900
+	roll		0.000000
+	fov		37.321571
+	nclip		0.010000
+	fclip		3276.800049

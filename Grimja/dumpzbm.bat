@@ -1,0 +1,1 @@
+java -cp ".;liblab\src" DumpExtractedZbm "C:\Tools\repo\zbm\mo_1_winws.zbm" "C:\Tools\repo\csv\mo_1_winws.csv"

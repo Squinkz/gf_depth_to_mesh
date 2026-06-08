@@ -1,0 +1,1 @@
+py depthToMesh.py --setups "C:\Tools\repo\mo.txt"
