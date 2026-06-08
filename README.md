@@ -165,7 +165,7 @@ Edit `run.bat` and change the path so that it points to your setup file.
 Example:
 
 ```bat
-python zbmToMesh.py --setups "C:\MyProject\setups.txt"
+python depthToMesh.py --setups "C:\MyProject\setups.txt"
 ```
 
 Save `run.bat`, then double-click it.
