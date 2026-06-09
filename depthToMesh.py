@@ -303,8 +303,6 @@ def ProjectPoints(
             c = vertexIndex[y + 1, x]
             d = vertexIndex[y + 1, x + 1]
 
-            # Triangle A-B-D
-
             if a >= 0 and b >= 0 and d >= 0:
 
                 za = depths[y, x]
@@ -314,30 +312,26 @@ def ProjectPoints(
                 if (
                     abs(za - zb) < maxDepthJump and
                     abs(zb - zd) < maxDepthJump and
-                    abs(za - zd) < maxDepthJump and
-                    abs(zd - za) < maxDepthJump
+                    abs(za - zd) < maxDepthJump
                 ):
                     faces.append((a, d, b))
 
-            # Triangle A-D-C
-
-            if a >= 0 and d >= 0 and c >= 0:
+            if a >= 0 and c >= 0 and d >= 0:
 
                 za = depths[y, x]
-                zd = depths[y + 1, x + 1]
                 zc = depths[y + 1, x]
+                zd = depths[y + 1, x + 1]
 
                 if (
-                    abs(za - zd) < maxDepthJump and
-                    abs(zd - zc) < maxDepthJump and
-                    abs(zb - zc) < maxDepthJump and
-                    abs(zc - za) < maxDepthJump
+                    abs(za - zc) < maxDepthJump and
+                    abs(zc - zd) < maxDepthJump and
+                    abs(za - zd) < maxDepthJump
                 ):
                     faces.append((a, c, d))
 
     points = np.array(points, dtype=np.float64)
     colors = np.array(colors, dtype=np.uint8)
-    faces = np.array(faces, dtype = np.int32)
+    faces = np.array(faces, dtype=np.int32)
 
     return points, colors, faces
 
