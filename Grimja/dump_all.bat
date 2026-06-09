@@ -1,0 +1,1 @@
+java -cp ".;liblab\src" DumpLabSetZbm "path_to_lab_file.LAB" "path_to_output_folder"
