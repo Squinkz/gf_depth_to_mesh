@@ -138,7 +138,7 @@ Place the resulting CSV files in:
 
 csv/
 
-3. Obtaining the Background Images
+## 3. Obtaining the Background Images
 
 Background images come from .bm files.
 
@@ -148,7 +148,7 @@ Place the exported PNG files in:
 
 images/
 
-Running the Script
+## Running the Script
 
 Basic usage:
 
