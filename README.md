@@ -51,11 +51,11 @@ inside `setups.txt`.
 
 ## Obtaining the Required Files
 
-You will need Grimja Gui and LibLab library:
+You will need Grimja GUI and/or liblab library:
 
 https://github.com/jlaw90/Grimja
 
-You will also need a local copy of liblab repo in order to dump the depth buffers to CSV.
+You will also need a local copy of liblab repo in order to dump the depth buffers to CSV. If you use the attached script to dump the whole LAB file, you don't need Grimja GUI at all, just the liblab repo.
 
 ## 1. Obtaining Camera Setup Data
 
@@ -128,50 +128,45 @@ The setup file can be named whatever you want, because you specify it as a comma
 
 ## 2. Obtaining the Depth Maps
 
-Use the Grimja GUI for this.
+Depth maps come from .zbm files.
 
-Right-click the `.zbm` file and choose **Extract**.
+You can either extract them manually with Grimja GUI, or dump them from the entire LAB file using the included Java helper script.
 
-## 3. Converting Depth Maps to CSV
+The Java helper script writes the extracted .zbm files and also converts them to .csv.
 
-This step requires LibLab.
+Place the resulting CSV files in:
 
-Place the Java file in the Grimja directory, then edit the `.bat` file and update the paths as needed.
-
-Run the `.bat` file. It should produce a CSV file for the depth map.
-
-Place the resulting CSV file in:
-
-```text
 csv/
-```
 
-## 4. Obtaining the Background Images
+3. Obtaining the Background Images
 
-Use the Grimja GUI for this as well.
+Background images come from .bm files.
 
-Export the `.bm` files using the PNG export option, don't rip the `.bm` files directly.
+You can export them manually from Grimja GUI as PNG files, or use the included Java helper script to dump them from the LAB file.
 
 Place the exported PNG files in:
 
-```text
 images/
-```
 
-## Running the Script
+Running the Script
 
-Edit `run.bat` and change the path so that it points to your setup file.
+Basic usage:
 
-Example:
+python depthToMesh.py --setups "setups.txt"
 
-```bat
-python depthToMesh.py --setups "C:\MyProject\setups.txt"
-```
+The generated .PLY meshes will be written to:
 
-Save `run.bat`, then double-click it.
-
-The generated `.PLY` meshes will be written to:
-
-```text
 meshes/
-```
+
+You can also edit run.bat and change the path so that it points to your setup file, then double-click it.
+
+## Command Line Options
+
+| Option         | Default  | Description                                                                                                                                                        |
+| -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--setups`     | Required | Path to the setup file (relative or absolute).                                                                                                                     |
+| `--gamma`      | `0.0`    | Gamma adjustment for vertex colors. `0.0` disables gamma correction. A value of 1.27 is reasonably close to how the images are presented in-game at default brightness. |
+| `--maxDepth`   | `50.0`   | Ignores reconstructed depth values larger than this. Useful for removing distant geometry and background spikes.                                                   |
+| `--depthSkip`  | `0.1`    | Controls triangle generation across depth discontinuities. Lower values reject more triangles, higher values allow more bridging across gaps.                      |
+| `--pointsOnly` | `False`  | Skip mesh generation and output a point cloud only.                                                                                                                |
+
