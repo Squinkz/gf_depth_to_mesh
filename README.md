@@ -1,5 +1,7 @@
 # Grim Fandango Depth Buffer to Mesh
 
+[![YouTube Demo](example.jpg)](https://www.youtube.com/watch?v=twSk7dYyJFk)
+
 This script reconstructs meshes from Grim Fandango depth buffers, background images, and camera setup data.
 
 The output is a set of binary `.PLY` meshes with vertex colors.
