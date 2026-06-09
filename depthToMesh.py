@@ -15,6 +15,20 @@ def Normalize(vector):
 
     return vector / length
 
+def SrgbToLinear(x):
+    return np.where(
+        x <= 0.04045,
+        x / 12.92,
+        ((x + 0.055) / 1.055) ** 2.4
+    )
+
+def LinearToSrgb(x):
+    return np.where(
+        x <= 0.0031308,
+        x * 12.92,
+        1.055 * (x ** (1.0 / 2.4)) - 0.055
+    )
+
 def WriteBinaryPly(path, points, colors, faces = None):
     path = Path(path)
 
@@ -190,6 +204,9 @@ def BuildTransformationMatrix(position, lookAt):
 
     worldUp = np.array([0.0, 0.0, 1.0])
 
+    if abs(np.dot(forward, worldUp)) > 0.999:
+        worldUp = np.array([0.0, 1.0, 0.0])
+
     right = Normalize(np.cross(forward, worldUp))
     up = Normalize(np.cross(right, forward))
 
@@ -236,9 +253,20 @@ def ProjectPoints(
     fovDegrees,
     depthNear,
     depthFar,
+    gamma,
+    maxDepth,
+    depthSkip,
+    pointsOnly,
 ):
     backgroundImage = Image.open(backgroundPath).convert("RGB")
     background = np.array(backgroundImage)
+
+    if gamma != 0:
+        background = background.astype(np.float32) / 255.0
+        background = SrgbToLinear(background)
+        background = np.power(background, 1.0 / gamma)
+        background = LinearToSrgb(background)
+        background = np.clip(background * 255.0, 0, 255).astype(np.uint8)
 
     height, width = background.shape[:2]
 
@@ -272,7 +300,7 @@ def ProjectPoints(
 
             z = DecodeDepth(rawDepth, depthNear, depthFar)
 
-            if z > 500.0:
+            if z > maxDepth:
                 continue
 
             nx = (x - cx) / fx
@@ -291,9 +319,14 @@ def ProjectPoints(
             points.append(point)
             colors.append(background[y, x])
 
+    points = np.array(points, dtype=np.float64)
+    colors = np.array(colors, dtype=np.uint8)
     faces = []
 
-    maxDepthJump = max(0.1, z * 0.01)
+    if pointsOnly:
+        return points, colors, faces
+
+    maxDepthJump = max(depthSkip, z * 0.01)
 
     for y in range(height - 1):
         for x in range(width - 1):
@@ -329,8 +362,6 @@ def ProjectPoints(
                 ):
                     faces.append((a, c, d))
 
-    points = np.array(points, dtype=np.float64)
-    colors = np.array(colors, dtype=np.uint8)
     faces = np.array(faces, dtype=np.int32)
 
     return points, colors, faces
@@ -342,6 +373,10 @@ def main():
     scriptDir = Path(__file__).resolve().parent
 
     parser.add_argument("--setups", required=True)
+    parser.add_argument("--gamma", type=float, default=0.0, help="Gamma adjustment for vertex colors (0.0 to disable)")
+    parser.add_argument("--maxDepth", type=float, default=50.0, help="Ignore depth values larger than this")
+    parser.add_argument("--depthSkip", type=float, default=0.1, help="Value for deciding what should be triangulated")
+    parser.add_argument("--pointsOnly", action="store_true", help="Skip meshing and output only a point cloud")
 
     args = parser.parse_args()
 
@@ -359,15 +394,23 @@ def main():
             fovDegrees = fovs[i],
             depthNear = nearClips[i],
             depthFar = farClips[i],
+            gamma = args.gamma,
+            maxDepth = args.maxDepth,
+            depthSkip = args.depthSkip,
+            pointsOnly = args.pointsOnly
         )
 
         outpath = scriptDir / "meshes" / f"{names[i]}.ply"
+
+        print("points:", len(points))
+        print("colors:", len(colors))
+        print("faces:", len(faces))
 
         WriteBinaryPly(
             outpath,
             points,
             colors,
-            faces
+            None if args.pointsOnly else faces
         )
 
         print("Wrote", outpath,"\n")
