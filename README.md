@@ -158,14 +158,15 @@ The generated .PLY meshes will be written to:
 
 meshes/
 
+You can also edit run.bat and change the path so that it points to your setup file, then double-click it.
+
 ## Command Line Options
 
-You can also edit run.bat and change the path so that it points to your setup file, then double-click it.
 | Option | Default | Description |
 | --- | --- | --- |
-| `--setups` | Required | Path to the setup file, relative or absolute. |
-| `--gamma` | `0.0` | Gamma adjustment for vertex colors. `0.0` disables gamma correction. A value of `1.27` is reasonably close to the in-game appearance at default brightness. |
-| `--maxDepth` | `50.0` | Ignores reconstructed depth values larger than this. Useful for removing distant geometry and background spikes. |
-| `--depthSkip` | `0.1` | Controls triangle generation across depth discontinuities. Lower values reject more triangles; higher values allow more bridging across gaps. |
-| `--pointsOnly` | `False` | Skip mesh generation and output a point cloud only. |                                                                                                           |
+| `--setups`<br> | Required | Path to the setup file, relative or absolute. |
+| `--gamma`<br> | `0.0` | Gamma adjustment for vertex colors. `0.0` disables gamma correction. A value of `1.27` is reasonably close to the in-game appearance at default brightness. |
+| `--maxDepth`<br> | `50.0` | Ignores reconstructed depth values larger than this. Useful for removing distant geometry and background spikes. |
+| `--depthSkip`<br> | `0.1` | Controls triangle generation across depth discontinuities. Lower values reject more triangles; higher values allow more bridging across gaps. |
+| `--pointsOnly`<br> | `False` | Skip mesh generation and output a point cloud only. |                                                                                                           |
 
