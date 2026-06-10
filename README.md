@@ -159,7 +159,7 @@ Basic usage:
 
 python depthToMesh.py --setups "setups.txt"
 
-The generated .PLY meshes will be written to:
+The generated `.PLY` or `.OBJ` meshes will be written to:
 
 meshes/
 
