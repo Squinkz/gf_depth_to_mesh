@@ -1,7 +1,7 @@
 # Grim Fandango Depth Buffer to Mesh
 
 [![YouTube Demo](example.jpg)](https://www.youtube.com/watch?v=twSk7dYyJFk)
-_ ^ A video demonstration of the reconstructed meshes ^ (click to watch) _
+*^ A video demonstration of the reconstructed meshes ^ (click to watch)*
 
 This script reconstructs meshes from Grim Fandango depth buffers, background images, and camera setup data.
 
