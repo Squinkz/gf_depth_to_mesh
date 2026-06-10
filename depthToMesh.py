@@ -2,9 +2,15 @@ from pathlib import Path
 import argparse
 import csv
 import math
-
+from title import Title
 import numpy as np
 from PIL import Image
+from meshWriter import WriteBinaryPly, WriteOBJ
+
+
+MODULE_NAME = "Grim Fandando Depth Map To Mesh"
+MODULE_VERSION = [1, 2]
+MODULE_AUTHOR = 'Dieter "squink" Stassen'
 
 
 def Normalize(vector):
@@ -29,98 +35,7 @@ def LinearToSrgb(x):
         1.055 * (x ** (1.0 / 2.4)) - 0.055
     )
 
-def WriteBinaryPly(path, points, colors, faces = None):
-    path = Path(path)
-
-    points = np.asarray(points, dtype = np.float32)
-    colors = np.asarray(colors)
-
-    if faces is None:
-        faces = []
-
-    faces = np.asarray(faces, dtype = np.int32)
-
-    if points.ndim != 2 or points.shape[1] != 3:
-        raise ValueError("points must be shaped (N, 3)")
-
-    if colors.ndim != 2 or colors.shape[1] < 3:
-        raise ValueError("colors must be shaped (N, 3) or (N, 4)")
-
-    colors = colors[:, :3]
-
-    if colors.dtype != np.uint8:
-        colors = np.clip(colors, 0, 255).astype(np.uint8)
-
-    if len(points) != len(colors):
-        raise ValueError("points and colors must have the same length")
-
-    if faces.size > 0:
-        if faces.ndim != 2 or faces.shape[1] != 3:
-            raise ValueError("faces must be shaped (M, 3)")
-
-        if faces.min() < 0 or faces.max() >= len(points):
-            raise ValueError("faces contain invalid vertex indices")
-    else:
-        faces = np.empty((0, 3), dtype = np.int32)
-
-    vertexCount = len(points)
-    faceCount = len(faces)
-
-    header = (
-        "ply\n"
-        "format binary_little_endian 1.0\n"
-        f"element vertex {vertexCount}\n"
-        "property float x\n"
-        "property float y\n"
-        "property float z\n"
-        "property uchar red\n"
-        "property uchar green\n"
-        "property uchar blue\n"
-        f"element face {faceCount}\n"
-        "property list uchar int vertex_indices\n"
-        "end_header\n"
-    ).encode("ascii")
-
-    vertexData = np.empty(
-        vertexCount,
-        dtype = [
-            ("x", "<f4"),
-            ("y", "<f4"),
-            ("z", "<f4"),
-            ("red", "u1"),
-            ("green", "u1"),
-            ("blue", "u1"),
-        ]
-    )
-
-    vertexData["x"] = points[:, 0]
-    vertexData["y"] = points[:, 1]
-    vertexData["z"] = points[:, 2]
-    vertexData["red"] = colors[:, 0]
-    vertexData["green"] = colors[:, 1]
-    vertexData["blue"] = colors[:, 2]
-
-    faceData = np.empty(
-        faceCount,
-        dtype = [
-            ("vertexCount", "u1"),
-            ("v0", "<i4"),
-            ("v1", "<i4"),
-            ("v2", "<i4"),
-        ]
-    )
-
-    if faceCount > 0:
-        faceData["vertexCount"] = 3
-        faceData["v0"] = faces[:, 0]
-        faceData["v1"] = faces[:, 1]
-        faceData["v2"] = faces[:, 2]
-
-    with open(path, "wb") as file:
-        file.write(header)
-        vertexData.tofile(file)
-        faceData.tofile(file)
-
+# Reads data from the camera setups
 def ReadSetups(path):
     names = []
     positions = []
@@ -196,6 +111,7 @@ def ReadSetups(path):
         farClips
     )
 
+# Transform the points from camera space to world space
 def BuildTransformationMatrix(position, lookAt):
     position = np.asarray(position, dtype=float)
     lookAt = np.asarray(lookAt, dtype=float)
@@ -219,6 +135,7 @@ def BuildTransformationMatrix(position, lookAt):
 
     return matrix
 
+# Reads depth data
 def LoadDepthCsv(csvPath, width, height):
     depth = np.zeros((height, width), dtype=np.uint16)
 
@@ -235,6 +152,7 @@ def LoadDepthCsv(csvPath, width, height):
 
     return depth
 
+# Linearizes the depth data
 def DecodeDepth(rawDepth, depthNear, depthFar):
     glDepth = 0xffff - ((rawDepth * 0x10000) // 100 // (0x10000 - rawDepth))
     glDepth = glDepth / 65535.0
@@ -245,6 +163,7 @@ def DecodeDepth(rawDepth, depthNear, depthFar):
         depthFar + depthNear - zNdc * (depthFar - depthNear)
     )
 
+# Projects the points into 3D
 def ProjectPoints(
     depthCsvPath,
     backgroundPath,
@@ -272,10 +191,11 @@ def ProjectPoints(
 
     depthRaw = LoadDepthCsv(depthCsvPath, width, height).astype(np.float64)
 
-    vertexIndex = np.full((height, width), -1, dtype=np.int32)
+    vertexIndices = np.full((height, width), -1, dtype=np.int32)
 
     points = []
     colors = []
+    uvs = []
     depths = np.full((height, width), np.nan, dtype=np.float32)
 
     hfov = math.radians(fovDegrees)
@@ -311,62 +231,113 @@ def ProjectPoints(
 
             point = (camToWorld @ np.array([wX, -wY, -z, 1.0]))[:3]
 
+            u = x / (width - 1)
+            v = 1.0 - (y / (height - 1))
+
             index = len(points)
 
-            vertexIndex[y, x] = index
+            vertexIndices[y, x] = index
             depths[y, x] = z
 
             points.append(point)
             colors.append(background[y, x])
+            uvs.append((u, v))
 
     points = np.array(points, dtype=np.float64)
     colors = np.array(colors, dtype=np.uint8)
-    faces = []
+    uvs = np.array(uvs, dtype=np.float32)
 
     if pointsOnly:
-        return points, colors, faces
+        faces = np.empty((0, 3), dtype=np.int32)
+    else:
+        faces = BuildFaces(depthSkip, vertexIndices, depths)
 
-    maxDepthJump = max(depthSkip, z * 0.01)
+    return points, colors, faces, uvs
+
+# Triangulates and meshes the points
+def BuildFaces(depthSkip, vertexIndices, depths):
+
+    def CanMakeTriangle(z0, z1, z2, maxDepthJump):
+        return (
+            abs(z0 - z1) < maxDepthJump and
+            abs(z1 - z2) < maxDepthJump and
+            abs(z0 - z2) < maxDepthJump
+        )
+
+    faces = []
+    height, width = vertexIndices.shape
 
     for y in range(height - 1):
         for x in range(width - 1):
 
-            a = vertexIndex[y, x]
-            b = vertexIndex[y, x + 1]
-            c = vertexIndex[y + 1, x]
-            d = vertexIndex[y + 1, x + 1]
+            a = vertexIndices[y, x]
+            b = vertexIndices[y, x + 1]
+            c = vertexIndices[y + 1, x]
+            d = vertexIndices[y + 1, x + 1]
 
-            if a >= 0 and b >= 0 and d >= 0:
+            za = depths[y, x]
+            zb = depths[y, x + 1]
+            zc = depths[y + 1, x]
+            zd = depths[y + 1, x + 1]
 
-                za = depths[y, x]
-                zb = depths[y, x + 1]
-                zd = depths[y + 1, x + 1]
+            validDepths = []
 
-                if (
-                    abs(za - zb) < maxDepthJump and
-                    abs(zb - zd) < maxDepthJump and
-                    abs(za - zd) < maxDepthJump
-                ):
-                    faces.append((a, d, b))
+            if a >= 0:
+                validDepths.append(za)
+            if b >= 0:
+                validDepths.append(zb)
+            if c >= 0:
+                validDepths.append(zc)
+            if d >= 0:
+                validDepths.append(zd)
 
-            if a >= 0 and c >= 0 and d >= 0:
+            if len(validDepths) < 3:
+                continue
 
-                za = depths[y, x]
-                zc = depths[y + 1, x]
-                zd = depths[y + 1, x + 1]
+            avgDepth = sum(validDepths) / len(validDepths)
+            maxDepthJump = max(depthSkip, avgDepth * 0.01)
 
-                if (
-                    abs(za - zc) < maxDepthJump and
-                    abs(zc - zd) < maxDepthJump and
-                    abs(za - zd) < maxDepthJump
-                ):
-                    faces.append((a, c, d))
+            if a >= 0 and b >= 0 and c >= 0 and d >= 0:
+                diagAd = abs(za - zd)
+                diagBc = abs(zb - zc)
+
+                if diagAd <= diagBc:
+                    if CanMakeTriangle(za, zb, zd, maxDepthJump):
+                        faces.append((a, d, b))
+
+                    if CanMakeTriangle(za, zc, zd, maxDepthJump):
+                        faces.append((a, c, d))
+                else:
+                    if CanMakeTriangle(za, zc, zb, maxDepthJump):
+                        faces.append((a, c, b))
+
+                    if CanMakeTriangle(zb, zc, zd, maxDepthJump):
+                        faces.append((b, c, d))
+
+            else:
+                if a >= 0 and b >= 0 and d >= 0:
+                    if CanMakeTriangle(za, zb, zd, maxDepthJump):
+                        faces.append((a, d, b))
+
+                if a >= 0 and c >= 0 and d >= 0:
+                    if CanMakeTriangle(za, zc, zd, maxDepthJump):
+                        faces.append((a, c, d))
+
+                if a >= 0 and b >= 0 and c >= 0:
+                    if CanMakeTriangle(za, zc, zb, maxDepthJump):
+                        faces.append((a, c, b))
+
+                if b >= 0 and c >= 0 and d >= 0:
+                    if CanMakeTriangle(zb, zc, zd, maxDepthJump):
+                        faces.append((b, c, d))
 
     faces = np.array(faces, dtype=np.int32)
 
-    return points, colors, faces
+    return faces
 
 def main():
+
+    print(Title(MODULE_NAME, MODULE_VERSION, MODULE_AUTHOR))
 
     parser = argparse.ArgumentParser()
 
@@ -377,8 +348,21 @@ def main():
     parser.add_argument("--maxDepth", type=float, default=50.0, help="Ignore depth values larger than this")
     parser.add_argument("--depthSkip", type=float, default=0.1, help="Value for deciding what should be triangulated")
     parser.add_argument("--pointsOnly", action="store_true", help="Skip meshing and output only a point cloud")
+    parser.add_argument(
+        "--outFormat",
+        choices=["PLY", "OBJ"],
+        default="PLY",
+        help="Output PLY with vertex colors or OBJ with UV data"
+    )
 
     args = parser.parse_args()
+
+    print("--gamma:\t", args.gamma)
+    print("--maxDepth:\t", args.maxDepth)
+    print("--depthSkip:\t", args.depthSkip)
+    print("--pointsOnly:\t", args.pointsOnly)
+    print("--outFormat:\t", args.outFormat)
+    print("")
 
     names, positions, interests, fovs, nearClips, farClips = ReadSetups(Path(args.setups))
 
@@ -386,7 +370,7 @@ def main():
 
         print("Projecting setup:", names[i], "...")
 
-        points, colors, faces = ProjectPoints(
+        points, colors, faces, uvs = ProjectPoints(
             depthCsvPath = scriptDir / "CSV" / f"{names[i]}.csv",
             backgroundPath = scriptDir / "images" / f"{names[i]}.png",
             position = np.array(positions[i], dtype = np.float64),
@@ -400,18 +384,25 @@ def main():
             pointsOnly = args.pointsOnly
         )
 
-        outpath = scriptDir / "meshes" / f"{names[i]}.ply"
+        print("\tpoints:\t", len(points))
+        print("\tfaces:\t", len(faces))
 
-        print("points:", len(points))
-        print("colors:", len(colors))
-        print("faces:", len(faces))
-
-        WriteBinaryPly(
-            outpath,
-            points,
-            colors,
-            None if args.pointsOnly else faces
-        )
+        if args.outFormat == "PLY":
+            outpath = scriptDir / "meshes" / f"{names[i]}.ply"
+            WriteBinaryPly(
+                outpath,
+                points,
+                colors,
+                None if args.pointsOnly else faces
+            )
+        else:
+            outpath = scriptDir / "meshes" / f"{names[i]}.obj"
+            WriteOBJ(
+                outpath,
+                points,
+                uvs,
+                None if args.pointsOnly else faces
+            )
 
         print("Wrote", outpath,"\n")
 
