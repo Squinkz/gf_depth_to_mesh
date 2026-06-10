@@ -171,7 +171,7 @@ You can also edit run.bat and change the path so that it points to your setup fi
 | Option | Default | Description |
 | --- | --- | --- |
 | `--setups`<br> | Required | Path to the setup file, relative or absolute. |
-| `--outFormat`<br> | "PLY" | Whether to output PLY with vertex colors or OBJ with UV data. Accepts `"PLY"` and `"OBJ"`
+| `--outFormat`<br> | `"PLY"` | Whether to output PLY with vertex colors or OBJ with UV data. Accepts `"PLY"` and `"OBJ"`
 | `--gamma`<br> | `0.0` | Gamma adjustment for vertex colors. `0.0` disables gamma correction. A value of `1.27` is reasonably close to the in-game appearance at default brightness. |
 | `--maxDepth`<br> | `50.0` | Ignores reconstructed depth values larger than this. Useful for removing distant geometry and background spikes. |
 | `--depthSkip`<br> | `0.1` | Controls triangle generation across depth discontinuities. Lower values reject more triangles; higher values allow more bridging across gaps. |
